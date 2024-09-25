@@ -101,14 +101,36 @@ class PointerParticle {
     }
   
     setPointerValues(event) {
-      this.pointer.x = event.x - this.offsetLeft;
-      this.pointer.y = event.y - this.offsetTop;
-      this.pointer.mx = event.movementX;
-      this.pointer.my = event.movementY;
+      if (event.touches) {
+        // For touch events (mobile)
+        const touch = event.touches[0];
+        this.pointer.x = touch.clientX - this.offsetLeft;
+        this.pointer.y = touch.clientY - this.offsetTop;
+  
+        if (event.type === "touchmove") {
+          this.pointer.mx = touch.clientX - this.pointer.x;
+          this.pointer.my = touch.clientY - this.pointer.y;
+        }
+      } else {
+        // For pointer events (desktop)
+        this.pointer.x = event.clientX - this.offsetLeft;
+        this.pointer.y = event.clientY - this.offsetTop;
+        this.pointer.mx = event.movementX || 0;
+        this.pointer.my = event.movementY || 0;
+      }
     }
   
     setupEvents() {
       const parent = this.parentNode;
+  
+      // Desktop: Handle pointer events
+      parent.addEventListener("pointermove", (event) => {
+        this.createParticles(event, {
+          count: 20,
+          speed: this.getPointerVelocity(event),
+          spread: 1
+        });
+      });
   
       parent.addEventListener("click", (event) => {
         this.createParticles(event, {
@@ -118,7 +140,8 @@ class PointerParticle {
         });
       });
   
-      parent.addEventListener("pointermove", (event) => {
+      // Mobile: Handle touch events
+      parent.addEventListener("touchmove", (event) => {
         this.createParticles(event, {
           count: 20,
           speed: this.getPointerVelocity(event),
@@ -126,15 +149,21 @@ class PointerParticle {
         });
       });
   
+      parent.addEventListener("touchstart", (event) => {
+        this.createParticles(event, {
+          count: 300,
+          speed: Math.random() + 1,
+          spread: Math.random() + 50
+        });
+      });
+  
       window.addEventListener("resize", () => this.setCanvasDimensions());
     }
   
     getPointerVelocity(event) {
-      const a = event.movementX;
-      const b = event.movementY;
-      const c = Math.floor(Math.sqrt(a * a + b * b));
-  
-      return c;
+      const a = event.movementX || 0;
+      const b = event.movementY || 0;
+      return Math.floor(Math.sqrt(a * a + b * b));
     }
   
     handleParticles() {
@@ -150,7 +179,6 @@ class PointerParticle {
   
     setCanvasDimensions() {
       const rect = this.parentNode.getBoundingClientRect();
-  
       this.canvas.width = rect.width;
       this.canvas.height = rect.height;
     }
@@ -175,3 +203,4 @@ class PointerParticle {
   }
   
   PointerParticles.register();
+  
